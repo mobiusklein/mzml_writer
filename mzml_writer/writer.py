@@ -33,7 +33,7 @@ class XMLWriterMixin(object):
     @contextmanager
     def element(self, element_name, **kwargs):
         if self.verbose:
-            print(element_name)
+            print("In XMLWriterMixin.element", element_name, kwargs)
         try:
             if isinstance(element_name, basestring):
                 with element(self.writer, element_name, **kwargs):
@@ -149,6 +149,12 @@ class MzMLWriter(ComponentDispatcher, XMLWriterMixin):
         self.vocabularies.extend(vocabularies)
         cvlist = self.CVList(self.vocabularies)
         cvlist.write(self.writer)
+
+    def software_list(self, software_list):
+        n = len(software_list)
+        if n:
+            software_list = [self.Software(**sw) for sw in software_list]
+        self.SoftwareList(software_list).write(self)
 
     def write_spectrum(self, mz_array, intensity_array, charge_array=None, id=None,
                        polarity='positive scan', centroided=True, precursor_information=None,

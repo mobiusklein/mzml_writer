@@ -89,9 +89,14 @@ class TagBase(object):
         self.attrs.update(self.type_attrs)
         self.text = text
         self.attrs.update(attrs)
+        # When passing through a XMLWriterMixin.element() call, tags may be reconstructed
+        # and any set ids will be passed through the attrs dictionary, but the `with_id`
+        # flag won't be propagated. `_force_id` preserves this.
+        self._force_id = True
         if _id is None:
             self._id_number = self.counter()
             self._id_string = None
+            self._force_id = False
         elif isinstance(_id, int):
             self._id_number = _id
             self._id_string = None
@@ -129,7 +134,14 @@ class TagBase(object):
             self._id_string = id_maker(self.tag_name, self._id_number)
         return self._id_string
 
+    @property
+    def with_id(self):
+        return False
+
     def element(self, xml_file=None, with_id=False):
+        with_id = self.with_id or with_id or self._force_id
+        # if self.tag_name == "software" and not with_id:
+        #     raise Exception()
         attrs = {k: str(v) for k, v in self.attrs.items() if v is not None}
         if with_id:
             attrs['id'] = self.id
@@ -558,6 +570,13 @@ class GenericCollection(ComponentBase):
                 member.write(xml_file)
 
 
+class IDMemberGenericCollection(GenericCollection):
+    def write(self, xml_file):
+        with self.element.element(xml_file, with_id=False):
+            for member in self.members:
+                member.write(xml_file, with_id=True)
+
+
 class IDGenericCollection(GenericCollection):
     def __init__(self, tag_name, members, id, context=NullMap):
         self.members = members
@@ -698,6 +717,10 @@ class Software(ComponentBase):
         self.id = self.element.id
         self.context = context
         context['Software'][id] = self.element.id
+
+    @property
+    def with_id(self):
+        return True
 
     def write(self, xml_file):
         with self.element.element(xml_file, with_id=True):
